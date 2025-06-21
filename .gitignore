@@ -1,0 +1,14 @@
+# Java build
+/target/
+*.class
+
+# IntelliJ
+/.idea/
+*.iml
+
+# Node.js
+/node_modules/
+/dist/
+
+# Env files
+*.env
