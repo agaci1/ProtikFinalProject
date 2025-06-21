@@ -12,3 +12,6 @@
 
 # Env files
 *.env
+
+# Spring Boot app props (keep local only)
+/LuxuryRideBackend/src/main/resources/application.properties
