@@ -26,6 +26,19 @@ import java.util.List;
             return paymentRepository.findById(id).orElse(null);
         }
 
+        public Payment updatePayment(Long id, Payment updatedPayment) {
+            Payment existing = paymentRepository.findById(id).orElse(null);
+            if (existing != null) {
+                existing.setAmount(updatedPayment.getAmount());
+                existing.setPaymentDate(updatedPayment.getPaymentDate());
+                existing.setMethod(updatedPayment.getMethod());
+                existing.setPaymentType(updatedPayment.getPaymentType());
+                existing.setClient(updatedPayment.getClient());
+                return paymentRepository.save(existing);
+            }
+            return null;
+        }
+
 
 
         public void deletePayment(Long id) {

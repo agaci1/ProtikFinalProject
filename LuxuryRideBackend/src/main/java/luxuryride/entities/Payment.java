@@ -26,14 +26,14 @@ public class Payment {
     private Double amount;
 
     @Enumerated(EnumType.STRING)
-    private PaymantType paymantType;
+    private PaymantType paymentType;
 
     @Enumerated(EnumType.STRING)
     private PaymentMethod method;
 
 
     public Payment(PaymantType paymantType) {
-        this.paymantType = paymantType;
+        this.paymentType = paymantType;
     }
 
     public Payment(PaymentMethod method) {
@@ -41,11 +41,11 @@ public class Payment {
     }
 
     public PaymantType getPaymantType() {
-        return paymantType;
+        return paymentType;
     }
 
     public void setPaymantType(PaymantType paymantType) {
-        this.paymantType = paymantType;
+        this.paymentType = paymantType;
     }
 
     public PaymentMethod getMethod() {
