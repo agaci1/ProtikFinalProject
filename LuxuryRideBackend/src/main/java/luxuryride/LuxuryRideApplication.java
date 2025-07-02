@@ -1,4 +1,4 @@
-package com.agency.backend.luxuryride;
+package luxuryride;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
