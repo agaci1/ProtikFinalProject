@@ -3,7 +3,7 @@ package luxuryride;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "luxuryride")
 public class LuxuryRideApplication {
 
     public static void main(String[] args) {

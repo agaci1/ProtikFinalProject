@@ -28,22 +28,25 @@ public class CarService {
         return repo.save(car);
     }
 
-    public Car updateCar(Long id, Car carDetails) {
-        return repo.findById(id).map(car -> {
-            car.setBrand(carDetails.getBrand());
-            car.setModel(carDetails.getModel());
-            car.setPlates(carDetails.getPlates());
-            car.setPrice(carDetails.getPrice());
-            car.setAvailable(carDetails.isAvailable());
-            car.setForRent(carDetails.isForRent());
-            car.setForSale(carDetails.isForSale());
-            car.setDescription(carDetails.getDescription());
-            return repo.save(car);
-        }).orElseThrow(() -> new RuntimeException("Car not found with id: " + id));
+    public Car updateCar(Long id, Car d) {
+        return repo.findById(id).map(c -> {
+            c.setBrand(d.getBrand());
+            c.setModel(d.getModel());
+            c.setType(d.getType());
+            c.setPrice(d.getPrice());
+            c.setAvailable(d.isAvailable());
+            c.setForRent(d.isForRent());
+            c.setForSale(d.isForSale());
+            c.setYear(d.getYear());
+            c.setMileage(d.getMileage());
+            c.setFuel(d.getFuel());
+            c.setImage(d.getImage());
+            c.setDescription(d.getDescription());
+            return repo.save(c);
+        }).orElseThrow(() -> new RuntimeException("Car not found: " + id));
     }
 
     public void deleteCar(Long id) {
         repo.deleteById(id);
     }
 }
-

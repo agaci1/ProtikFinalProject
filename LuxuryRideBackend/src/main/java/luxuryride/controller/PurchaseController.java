@@ -1,90 +1,78 @@
-// src/main/java/luxuryride/controller/PurchaseController.java
 package luxuryride.controller;
 
+import luxuryride.dto.PurchasePost;
 import luxuryride.entities.Purchase;
+import luxuryride.entities.Reservation;
 import luxuryride.service.PurchaseService;
+import luxuryride.service.ReservationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 
-/**
- * Controller for purchase CRUD + dedicated buy endpoint.
- */
 @RestController
 @RequestMapping("/api/purchases")
+@CrossOrigin(origins = "http://localhost:3000")
 public class PurchaseController {
 
-    private final PurchaseService service;
+    private final PurchaseService     purchaseService;
+    private final ReservationService  reservationService;
 
-    public PurchaseController(PurchaseService service) {
-        this.service = service;
+    public PurchaseController(PurchaseService purchaseService,
+                              ReservationService reservationService) {
+        this.purchaseService    = purchaseService;
+        this.reservationService = reservationService;
+        System.out.println("✅ PurchaseController is active");
     }
 
-    /** GET /api/purchases → all purchases */
+    /* ─────────── basic CRUD ─────────── */
+
     @GetMapping
-    public List<Purchase> getAll() {
-        return service.findAll();
+    public List<Purchase> getAllPurchases() {
+        return purchaseService.findAll();
     }
 
-    /** GET /api/purchases/{id} → one purchase */
     @GetMapping("/{id}")
-    public ResponseEntity<Purchase> getOne(@PathVariable Long id) {
-        Optional<Purchase> opt = service.findById(id);
-        return opt.map(ResponseEntity::ok)
+    public ResponseEntity<Purchase> get(@PathVariable Long id) {
+        return purchaseService.findById(id)
+                .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    /**
-     * POST /api/purchases/buy
-     * JSON body:
-     * {
-     *   "carId": 1,
-     *   "customerName": "Alice",
-     *   "customerEmail": "alice@example.com",
-     *   "paymentMethod": "Credit Card"
-     * }
-     */
     @PostMapping("/buy")
-    public ResponseEntity<Purchase> buyCar(@RequestBody BuyRequest dto) {
-        try {
-            Purchase p = service.buyCar(
-                    dto.getCarId(),
-                    dto.getCustomerName(),
-                    dto.getCustomerEmail(),
-                    dto.getPaymentMethod()
-            );
-            return ResponseEntity.ok(p);
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest().build();
-        }
+    public Purchase buy(@RequestBody PurchasePost body) {
+        return purchaseService.buyCar(
+                body.carId,
+                body.customerName,
+                body.customerEmail,
+                body.paymentMethod
+        );
     }
 
-    /** DELETE /api/purchases/{id} */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        if (!service.deletePurchase(id)) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.noContent().build();
+        return purchaseService.deletePurchase(id)
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.notFound().build();
     }
 
-    /** DTO for the /buy endpoint */
-    public static class BuyRequest {
-        private Long carId;
-        private String customerName;
-        private String customerEmail;
-        private String paymentMethod;
+    /* ─────────── history endpoints ─────────── */
 
-        // Getters & setters
-        public Long getCarId() { return carId; }
-        public void setCarId(Long carId) { this.carId = carId; }
-        public String getCustomerName() { return customerName; }
-        public void setCustomerName(String customerName) { this.customerName = customerName; }
-        public String getCustomerEmail() { return customerEmail; }
-        public void setCustomerEmail(String customerEmail) { this.customerEmail = customerEmail; }
-        public String getPaymentMethod() { return paymentMethod; }
-        public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
+    /** ① Purchases only */
+    @GetMapping("/history/purchases/{email}")
+    public List<Purchase> purchasesByEmail(@PathVariable String email) {
+        return purchaseService.findByCustomerEmail(email.trim().toLowerCase());
+    }
+
+    /** ② FULL history (purchases + reservations) */
+    @GetMapping("/history/{email}")
+    public Map<String, Object> fullHistory(@PathVariable String email) {
+        String key = email.trim().toLowerCase();
+        Map<String, Object> out = new HashMap<>();
+        out.put("purchases"   , purchaseService.findByCustomerEmail(key));
+        out.put("reservations", reservationService.findByCustomerEmail(key));
+        return out;
     }
 }

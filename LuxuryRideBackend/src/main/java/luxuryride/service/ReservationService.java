@@ -1,17 +1,19 @@
 package luxuryride.service;
 
-import org.springframework.stereotype.Service;
 import luxuryride.entities.Car;
 import luxuryride.entities.Reservation;
 import luxuryride.repository.CarRepository;
 import luxuryride.repository.ReservationRepository;
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 
 @Service
 public class ReservationService {
+
     private final ReservationRepository reservationRepo;
     private final CarRepository carRepo;
 
@@ -21,39 +23,41 @@ public class ReservationService {
         this.carRepo = carRepo;
     }
 
-    /** Fetch all reservations */
     public List<Reservation> findAll() {
         return reservationRepo.findAll();
     }
 
-    /** Fetch one reservation by ID */
     public Optional<Reservation> findById(Long id) {
         return reservationRepo.findById(id);
     }
 
-    /**
-     * Rent a car:
-     *  - Checks existence & availability
-     *  - Calculates totalPrice
-     *  - Marks the car unavailable
-     *  - Saves the new Reservation with status PENDING
-     */
+    public List<Reservation> findByCustomerEmail(String email) {
+        return reservationRepo.findByCustomerEmail(email);
+    }
+
     public Reservation rentCar(Long carId,
                                String customerName,
                                String customerEmail,
                                LocalDate start,
                                LocalDate end) {
+
+        if (start == null || end == null)
+            throw new IllegalArgumentException("Start and end dates must be provided");
+        if (start.isAfter(end))
+            throw new IllegalArgumentException("Start date must be on or before end date");
+
         Car car = carRepo.findById(carId)
                 .orElseThrow(() -> new IllegalArgumentException("Car not found: " + carId));
 
-        if (!car.isAvailable()) {
-            throw new IllegalArgumentException("Car is not available");
-        }
+        if (!car.isForRent())
+            throw new IllegalArgumentException("Car is not offered for rent");
 
-        long days = end.toEpochDay() - start.toEpochDay() + 1;
-        double total = days * car.getPrice();  // or getRentalPricePerDay()
+        if (!reservationRepo.findConflicts(carId, start, end).isEmpty())
+            throw new IllegalArgumentException("Car already reserved for the selected dates");
 
-        // create and populate
+        long days = ChronoUnit.DAYS.between(start, end) + 1;
+        double total = days * car.getPrice();
+
         Reservation r = new Reservation();
         r.setCar(car);
         r.setCustomerName(customerName);
@@ -63,33 +67,21 @@ public class ReservationService {
         r.setTotalPrice(total);
         r.setStatus(Reservation.Status.PENDING);
 
-        car.setAvailable(false);
-        carRepo.save(car);
-
         return reservationRepo.save(r);
     }
 
-    /**
-     * Update only the updatable fields of an existing reservation.
-     */
-    public Optional<Reservation> updateReservation(Long id, Reservation updated) {
+    public Optional<Reservation> updateReservation(Long id, Reservation u) {
         return reservationRepo.findById(id).map(r -> {
-            r.setStartDate(updated.getStartDate());
-            r.setEndDate(updated.getEndDate());
-            r.setTotalPrice(updated.getTotalPrice());
-            r.setStatus(updated.getStatus());
+            r.setStartDate(u.getStartDate());
+            r.setEndDate(u.getEndDate());
+            r.setTotalPrice(u.getTotalPrice());
+            r.setStatus(u.getStatus());
             return reservationRepo.save(r);
         });
     }
 
-    /**
-     * Delete a reservation.
-     * @return true if deleted, false if not found.
-     */
     public boolean deleteReservation(Long id) {
-        if (!reservationRepo.existsById(id)) {
-            return false;
-        }
+        if (!reservationRepo.existsById(id)) return false;
         reservationRepo.deleteById(id);
         return true;
     }

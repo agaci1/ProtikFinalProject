@@ -18,11 +18,13 @@ public class CarController {
         this.service = service;
     }
 
+    /* ---------- LIST ALL ---------- */
     @GetMapping
     public List<Car> getAllCars() {
-        return service.getAllCars();
+        return service.getAllCars(); // Shows all cars: available, booked, sold
     }
 
+    /* ---------- SINGLE ---------- */
     @GetMapping("/{id}")
     public ResponseEntity<Car> getCar(@PathVariable Long id) {
         return service.getCarById(id)
@@ -30,11 +32,13 @@ public class CarController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    /* ---------- CREATE ---------- */
     @PostMapping
     public Car createCar(@RequestBody Car car) {
         return service.createCar(car);
     }
 
+    /* ---------- UPDATE ---------- */
     @PutMapping("/{id}")
     public ResponseEntity<Car> updateCar(@PathVariable Long id, @RequestBody Car car) {
         try {
@@ -45,10 +49,10 @@ public class CarController {
         }
     }
 
+    /* ---------- DELETE (physical) ---------- */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteCar(@PathVariable Long id) {
         service.deleteCar(id);
         return ResponseEntity.noContent().build();
     }
 }
-
