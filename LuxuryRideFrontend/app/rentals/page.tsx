@@ -1,186 +1,150 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import Image from "next/image"
-import { Navigation } from "@/components/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Filter } from "lucide-react"
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
 
-const rentalCars = [
-  {
-    id: 1,
-    name: "BMW X5",
-    type: "SUV",
-    price: 89,
-    image: "/placeholder.svg?height=200&width=300",
-    available: true,
-    year: 2023,
-    fuel: "Gasoline",
-  },
-  {
-    id: 2,
-    name: "Mercedes C-Class",
-    type: "Sedan",
-    price: 75,
-    image: "/placeholder.svg?height=200&width=300",
-    available: true,
-    year: 2022,
-    fuel: "Gasoline",
-  },
-  {
-    id: 3,
-    name: "Audi A4",
-    type: "Sedan",
-    price: 65,
-    image: "/placeholder.svg?height=200&width=300",
-    available: false,
-    year: 2023,
-    fuel: "Gasoline",
-  },
-  {
-    id: 4,
-    name: "Toyota Camry",
-    type: "Sedan",
-    price: 45,
-    image: "/placeholder.svg?height=200&width=300",
-    available: true,
-    year: 2022,
-    fuel: "Hybrid",
-  },
-  {
-    id: 5,
-    name: "Honda CR-V",
-    type: "SUV",
-    price: 55,
-    image: "/placeholder.svg?height=200&width=300",
-    available: true,
-    year: 2023,
-    fuel: "Gasoline",
-  },
-  {
-    id: 6,
-    name: "Tesla Model 3",
-    type: "Sedan",
-    price: 85,
-    image: "/placeholder.svg?height=200&width=300",
-    available: true,
-    year: 2023,
-    fuel: "Electric",
-  },
-]
+import { Navigation }   from "@/components/navigation";
+import { Button }       from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input }        from "@/components/ui/input";
+import API_BASE         from "@/lib/api";
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Search, Filter } from "lucide-react";
+
+interface Car {
+  id:       number;
+  brand:    string;
+  model:    string;
+  type?:    string;
+  price:    number;
+  year?:    number;
+  fuel?:    string;
+  image?:   string;
+
+  /* ↓ categorisation flags coming from backend */
+  forRent:  boolean;
+  available:boolean;        // we _ignore_ this for rentals – server will decide on conflict
+}
 
 export default function RentalsPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filterType, setFilterType] = useState("all")
-  const [filteredCars, setFilteredCars] = useState(rentalCars)
-  const router = useRouter()
+  const router = useRouter();
 
+  /* ───────────────────────── auth gate ───────────────────────── */
   useEffect(() => {
-    const auth = localStorage.getItem("userAuth")
-    if (!auth) {
-      router.push("/auth/login")
-    } else {
-      setIsAuthenticated(true)
+    if (!localStorage.getItem("userAuth")) {
+      router.push("/auth/login");
     }
-  }, [router])
+  }, [router]);
 
+  /* ───────────────────────── state ───────────────────────── */
+  const [cars,   setCars]   = useState<Car[]>([]);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
+
+  /* ─────────────────────── initial fetch ─────────────────────── */
   useEffect(() => {
-    let filtered = rentalCars.filter(
-      (car) =>
-        car.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        car.type.toLowerCase().includes(searchTerm.toLowerCase()),
+    fetch(`${API_BASE}/api/cars`)
+      .then(r => r.json())
+      .then((data: Car[]) =>
+        setCars(data.filter(c => c.forRent))               // only rentals
+      )
+      .catch(err => console.error("GET /cars failed:", err));
+  }, []);
+
+  /* ─────────────────────── derived list ─────────────────────── */
+  const visible = cars
+    .filter(c =>
+      [c.brand, c.model, c.type].join(" ").toLowerCase().includes(search.toLowerCase())
     )
+    .filter(c => (filter === "all" ? true : (c.type ?? "").toLowerCase() === filter));
 
-    if (filterType !== "all") {
-      filtered = filtered.filter((car) => car.type.toLowerCase() === filterType.toLowerCase())
-    }
+  /* ───────────────────────── helpers ───────────────────────── */
+  const logout = () => {
+    localStorage.removeItem("userAuth");
+    router.push("/");
+  };
 
-    setFilteredCars(filtered)
-  }, [searchTerm, filterType])
+  const book = (carId: number) => {
+    router.push(`/booking/${carId}`);
+  };
 
-  const handleLogout = () => {
-    localStorage.removeItem("userAuth")
-    router.push("/")
-  }
-
-  const handleBookCar = (carId: number) => {
-    // For now, show an alert. Later this can navigate to booking page
-    alert(`Booking car with ID: ${carId}. This will be connected to your booking system.`)
-  }
-
-  if (!isAuthenticated) {
-    return <div>Loading...</div>
-  }
-
+  /* ───────────────────────── UI ───────────────────────── */
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navigation isAuthenticated={true} onLogout={handleLogout} />
+      <Navigation isAuthenticated onLogout={logout} />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Car Rentals</h1>
-          <p className="text-gray-600">Find the perfect rental car for your needs</p>
-        </div>
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* header */}
+        <header className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">Car&nbsp;Rentals</h1>
+          <p className="text-gray-600">Find the perfect ride</p>
+        </header>
 
-        {/* Search and Filter */}
+        {/* search + filter */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
               placeholder="Search cars..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
               className="pl-10"
             />
           </div>
-          <Select value={filterType} onValueChange={setFilterType}>
+          <Select value={filter} onValueChange={setFilter}>
             <SelectTrigger className="w-full sm:w-48">
               <Filter className="h-4 w-4 mr-2" />
               <SelectValue placeholder="Filter by type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="sedan">Sedan</SelectItem>
+              <SelectItem value="all">All types</SelectItem>
               <SelectItem value="suv">SUV</SelectItem>
+              <SelectItem value="sedan">Sedan</SelectItem>
+              <SelectItem value="coupe">Coupe</SelectItem>
               <SelectItem value="hatchback">Hatchback</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        {/* Cars Grid */}
+        {/* catalogue */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCars.map((car) => (
-            <Card key={car.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+          {visible.map(car => (
+            <Card key={`rent-${car.id}`} className="overflow-hidden hover:shadow-lg">
               <Image
                 src={car.image || "/placeholder.svg"}
-                alt={car.name}
+                alt={`${car.brand} ${car.model}`}
                 width={300}
                 height={200}
                 className="w-full h-48 object-cover"
               />
               <CardContent className="p-6">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-xl font-semibold">{car.name}</h3>
-                  <Badge variant={car.available ? "default" : "secondary"}>
-                    {car.available ? "Available" : "Rented"}
-                  </Badge>
-                </div>
+                <h3 className="text-xl font-semibold mb-1">
+                  {car.brand} {car.model}
+                </h3>
+
                 <p className="text-gray-600 mb-2">
-                  {car.type} • {car.year} • {car.fuel}
+                  {car.year ?? "-"} • {car.fuel ?? "-"}
                 </p>
+
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="text-2xl font-bold text-blue-600">${car.price}</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      ${car.price.toLocaleString()}
+                    </p>
                     <p className="text-sm text-gray-500">per day</p>
                   </div>
-                  <Button onClick={() => handleBookCar(car.id)} disabled={!car.available}>
-                    {car.available ? "Book Now" : "Unavailable"}
+
+                  {/* 🚗 ALWAYS allow booking – backend will reject conflicting dates */}
+                  <Button onClick={() => book(car.id)}>
+                    Book now
                   </Button>
                 </div>
               </CardContent>
@@ -188,12 +152,12 @@ export default function RentalsPage() {
           ))}
         </div>
 
-        {filteredCars.length === 0 && (
+        {visible.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">No cars found matching your criteria.</p>
+            <p className="text-gray-500 text-lg">No cars match your criteria.</p>
           </div>
         )}
       </div>
     </div>
-  )
+  );
 }

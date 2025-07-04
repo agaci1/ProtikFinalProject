@@ -1,16 +1,16 @@
-"use client"
+"use client";
 
-import type React from "react"
+import { useEffect, useState, FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import API_BASE from "@/lib/api";
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import Image from "next/image"
-import { Navigation } from "@/components/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Navigation } from "@/components/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -19,263 +19,283 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
-} from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Edit, Trash2 } from "lucide-react"
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Plus, Edit, Trash2 } from "lucide-react";
 
-const initialRentalCars = [
-  {
-    id: 1,
-    name: "BMW X5",
-    type: "SUV",
-    price: 89,
-    image: "/placeholder.svg?height=200&width=300",
-    available: true,
-    year: 2023,
-    fuel: "Gasoline",
-  },
-  {
-    id: 2,
-    name: "Mercedes C-Class",
-    type: "Sedan",
-    price: 75,
-    image: "/placeholder.svg?height=200&width=300",
-    available: true,
-    year: 2022,
-    fuel: "Gasoline",
-  },
-  {
-    id: 3,
-    name: "Audi A4",
-    type: "Sedan",
-    price: 65,
-    image: "/placeholder.svg?height=200&width=300",
-    available: false,
-    year: 2023,
-    fuel: "Gasoline",
-  },
-  {
-    id: 4,
-    name: "Toyota Camry",
-    type: "Sedan",
-    price: 45,
-    image: "/placeholder.svg?height=200&width=300",
-    available: true,
-    year: 2022,
-    fuel: "Hybrid",
-  },
-]
+interface Car {
+  id: number;
+  brand: string;
+  model: string;
+  type?: string;
+  price: number;
+  available: boolean;
+  year?: number;
+  mileage?: number;
+  fuel?: string;
+  image?: string;
+  forRent: boolean;
+}
+
+type FormState = {
+  brand: string;
+  model: string;
+  type: string;
+  price: string;
+  year: string;
+  mileage: string;
+  fuel: string;
+  available: "true" | "false";
+};
 
 export default function ManageRentalsPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [cars, setCars] = useState(initialRentalCars)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingCar, setEditingCar] = useState<any>(null)
-  const [formData, setFormData] = useState({
-    name: "",
+  const router = useRouter();
+  const [cars, setCars] = useState<Car[]>([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingCar, setEditingCar] = useState<Car | null>(null);
+  const [form, setForm] = useState<FormState>({
+    brand: "",
+    model: "",
     type: "",
     price: "",
     year: "",
+    mileage: "",
     fuel: "",
-    available: true,
-  })
-  const router = useRouter()
+    available: "true",
+  });
+
+  console.log("API_BASE = ", API_BASE);
 
   useEffect(() => {
-    const auth = localStorage.getItem("adminAuth")
-    if (!auth) {
-      router.push("/auth/admin-login")
-    } else {
-      setIsAuthenticated(true)
+    if (!localStorage.getItem("adminAuth")) {
+      router.push("/auth/admin-login");
+      return;
     }
-  }, [router])
 
-  const handleLogout = () => {
-    localStorage.removeItem("adminAuth")
-    router.push("/")
-  }
+    fetch(`${API_BASE}/api/cars`)
+      .then(r => r.json())
+      .then((data: Car[]) =>
+        setCars(data.filter(c => c.forRent))
+      )
+      .catch(err => console.error("GET /api/cars failed:", err));
+  }, [router]);
 
-  const handleAddCar = () => {
-    setEditingCar(null)
-    setFormData({
-      name: "",
+  const resetForm = () =>
+    setForm({
+      brand: "",
+      model: "",
       type: "",
       price: "",
       year: "",
+      mileage: "",
       fuel: "",
-      available: true,
-    })
-    setIsDialogOpen(true)
-  }
+      available: "true",
+    });
 
-  const handleEditCar = (car: any) => {
-    setEditingCar(car)
-    setFormData({
-      name: car.name,
-      type: car.type,
-      price: car.price.toString(),
-      year: car.year.toString(),
-      fuel: car.fuel,
-      available: car.available,
-    })
-    setIsDialogOpen(true)
-  }
+  const openAdd = () => {
+    setEditingCar(null);
+    resetForm();
+    setDialogOpen(true);
+  };
 
-  const handleDeleteCar = (carId: number) => {
-    setCars(cars.filter((car) => car.id !== carId))
-  }
+  const openEdit = (car: Car) => {
+    setEditingCar(car);
+    setForm({
+      brand: car.brand,
+      model: car.model,
+      type: car.type ?? "",
+      price: car.price?.toString() ?? "",
+      year: car.year?.toString() ?? "",
+      mileage: car.mileage?.toString() ?? "",
+      fuel: car.fuel ?? "",
+      available: car.available ? "true" : "false",
+    });
+    setDialogOpen(true);
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const deleteCar = async (id: number) => {
+    if (!confirm("Delete this car?")) return;
+    await fetch(`${API_BASE}/api/cars/${id}`, { method: "DELETE" });
+    setCars(prev => prev.filter(c => c.id !== id));
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+
+    const payload = {
+      brand: form.brand,
+      model: form.model,
+      type: form.type || undefined,
+      price: Number(form.price),
+      year: form.year ? Number(form.year) : undefined,
+      mileage: form.mileage ? Number(form.mileage) : undefined,
+      fuel: form.fuel || undefined,
+      available: form.available === "true",
+      image: "/placeholder.svg",
+      forRent: true,
+    };
 
     if (editingCar) {
-      // Update existing car
-      setCars(
-        cars.map((car) =>
-          car.id === editingCar.id
-            ? {
-                ...car,
-                name: formData.name,
-                type: formData.type,
-                price: Number.parseInt(formData.price),
-                year: Number.parseInt(formData.year),
-                fuel: formData.fuel,
-                available: formData.available,
-              }
-            : car,
-        ),
-      )
+      const res = await fetch(`${API_BASE}/api/cars/${editingCar.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const updated: Car = await res.json();
+      setCars(prev => prev.map(c => (c.id === updated.id ? updated : c)));
     } else {
-      // Add new car
-      const newCar = {
-        id: Math.max(...cars.map((c) => c.id)) + 1,
-        name: formData.name,
-        type: formData.type,
-        price: Number.parseInt(formData.price),
-        year: Number.parseInt(formData.year),
-        fuel: formData.fuel,
-        available: formData.available,
-        image: "/placeholder.svg?height=200&width=300",
-      }
-      setCars([...cars, newCar])
+      const res = await fetch(`${API_BASE}/api/cars`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const created: Car = await res.json();
+      setCars(prev => [...prev, created]);
     }
 
-    setIsDialogOpen(false)
-  }
-
-  if (!isAuthenticated) {
-    return <div>Loading...</div>
-  }
+    setDialogOpen(false);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navigation isAuthenticated={true} isAdmin={true} onLogout={handleLogout} />
+      <Navigation isAuthenticated isAdmin />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Manage Rental Cars</h1>
-            <p className="text-gray-600 mt-2">Add, edit, or remove rental vehicles</p>
-          </div>
+          <h1 className="text-3xl font-bold">Manage Rental Cars</h1>
 
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={handleAddCar} className="bg-blue-600 hover:bg-blue-700">
+              <Button onClick={openAdd}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Car
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+
+            <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editingCar ? "Edit Car" : "Add New Car"}</DialogTitle>
+                <DialogTitle>{editingCar ? "Edit car" : "Add car"}</DialogTitle>
                 <DialogDescription>
-                  {editingCar ? "Update the car details below." : "Add a new car to the rental fleet."}
+                  Fill in the rental-car details
                 </DialogDescription>
               </DialogHeader>
+
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Car Name</Label>
-                  <Input
-                    id="name"
-                    placeholder="e.g., BMW X5"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Brand</Label>
+                    <Input
+                      value={form.brand}
+                      onChange={e => setForm({ ...form, brand: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Model</Label>
+                    <Input
+                      value={form.model}
+                      onChange={e => setForm({ ...form, model: e.target.value })}
+                      required
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="type">Type</Label>
-                  <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+
+                <div>
+                  <Label>Type</Label>
+                  <Select
+                    value={form.type}
+                    onValueChange={v => setForm({ ...form, type: v })}
+                  >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select car type" />
+                      <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Sedan">Sedan</SelectItem>
                       <SelectItem value="SUV">SUV</SelectItem>
-                      <SelectItem value="Hatchback">Hatchback</SelectItem>
+                      <SelectItem value="Sedan">Sedan</SelectItem>
                       <SelectItem value="Coupe">Coupe</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="price">Price per day ($)</Label>
+                  <div>
+                    <Label>Price / day ($)</Label>
                     <Input
-                      id="price"
                       type="number"
-                      placeholder="89"
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                      value={form.price}
+                      onChange={e => setForm({ ...form, price: e.target.value })}
                       required
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="year">Year</Label>
+                  <div>
+                    <Label>Year</Label>
                     <Input
-                      id="year"
                       type="number"
-                      placeholder="2023"
-                      value={formData.year}
-                      onChange={(e) => setFormData({ ...formData, year: e.target.value })}
-                      required
+                      value={form.year}
+                      onChange={e => setForm({ ...form, year: e.target.value })}
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="fuel">Fuel Type</Label>
-                  <Select value={formData.fuel} onValueChange={(value) => setFormData({ ...formData, fuel: value })}>
+
+                <div>
+                  <Label>Mileage</Label>
+                  <Input
+                    type="number"
+                    value={form.mileage}
+                    onChange={e => setForm({ ...form, mileage: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Label>Fuel</Label>
+                  <Select
+                    value={form.fuel}
+                    onValueChange={v => setForm({ ...form, fuel: v })}
+                  >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select fuel type" />
+                      <SelectValue placeholder="Fuel type" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Gasoline">Gasoline</SelectItem>
                       <SelectItem value="Diesel">Diesel</SelectItem>
-                      <SelectItem value="Hybrid">Hybrid</SelectItem>
                       <SelectItem value="Electric">Electric</SelectItem>
+                      <SelectItem value="Hybrid">Hybrid</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="available">Availability</Label>
+
+                <div>
+                  <Label>Availability</Label>
                   <Select
-                    value={formData.available.toString()}
-                    onValueChange={(value) => setFormData({ ...formData, available: value === "true" })}
+                    value={form.available}
+                    onValueChange={v => setForm({ ...form, available: v as any })}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="true">Available</SelectItem>
-                      <SelectItem value="false">Not Available</SelectItem>
+                      <SelectItem value="false">Rented</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setDialogOpen(false)}
+                  >
                     Cancel
                   </Button>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-                    {editingCar ? "Update Car" : "Add Car"}
+                  <Button type="submit">
+                    {editingCar ? "Update" : "Add"}
                   </Button>
                 </DialogFooter>
               </form>
@@ -284,41 +304,43 @@ export default function ManageRentalsPage() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {cars.map((car) => (
+          {cars.map(car => (
             <Card key={car.id} className="overflow-hidden">
               <Image
                 src={car.image || "/placeholder.svg"}
-                alt={car.name}
+                alt={`${car.brand} ${car.model}`}
                 width={300}
                 height={200}
                 className="w-full h-48 object-cover"
               />
               <CardHeader>
                 <div className="flex justify-between items-start">
-                  <CardTitle className="text-lg">{car.name}</CardTitle>
+                  <CardTitle>
+                    {car.brand} {car.model}
+                  </CardTitle>
                   <Badge variant={car.available ? "default" : "secondary"}>
                     {car.available ? "Available" : "Rented"}
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600 mb-2">
-                  {car.type} • {car.year} • {car.fuel}
+                <p className="text-gray-600">
+                  {car.type} • {car.year ?? "-"} • {car.fuel ?? "-"}
                 </p>
-                <p className="text-2xl font-bold text-blue-600 mb-4">${car.price}/day</p>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => handleEditCar(car)}>
-                    <Edit className="h-4 w-4 mr-1" />
-                    Edit
+                <p className="text-blue-600 font-bold text-xl">
+                  ${car.price}/day
+                </p>
+                <div className="flex gap-2 mt-4">
+                  <Button size="sm" variant="outline" onClick={() => openEdit(car)}>
+                    <Edit className="w-4 h-4 mr-1" /> Edit
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => handleDeleteCar(car.id)}
-                    className="text-red-600 hover:text-red-700"
+                    className="text-red-600"
+                    onClick={() => deleteCar(car.id)}
                   >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
+                    <Trash2 className="w-4 h-4 mr-1" /> Delete
                   </Button>
                 </div>
               </CardContent>
@@ -327,5 +349,5 @@ export default function ManageRentalsPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
