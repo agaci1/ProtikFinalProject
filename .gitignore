@@ -1,0 +1,21 @@
+# Java build
+/target/
+*.class
+
+# IntelliJ
+/.idea/
+*.iml
+
+# Node.js
+/node_modules/
+/dist/
+
+# Env files
+*.env
+
+# Spring Boot app props (keep local only)
+/LuxuryRideBackend/src/main/resources/application.properties
+LuxuryRideBackend/target/
+LuxuryRideFrontend/public/videomakina.mp4
+LuxuryRideFrontend/node_modules/
+LuxuryRideBackend/target/
